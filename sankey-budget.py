@@ -1,5 +1,6 @@
 import plotly.graph_objects as go
 import plotly.colors as pc
+import streamlit as st
 
 def create_budget_sankey(
     income_sources,
@@ -8,8 +9,7 @@ def create_budget_sankey(
     title_color="black",
     layout=None
 ):
-    """..
-    Creates a dynamic Sankey diagram to visualize a budget with three verticals:
+    """Creates a dynamic Sankey diagram to visualize a budget with three verticals:
     Income -> Budget -> Expenses. Each node displays its amount next to its label.
 
     Parameters:
@@ -30,11 +30,11 @@ def create_budget_sankey(
     # Validate total income vs expenses
     if total_income < total_expenses:
         discrepancy = total_expenses - total_income
-        print(f"Warning: Total expenses (${total_expenses}) exceed total income (${total_income}).")
-        print(f"Discrepancy: ${discrepancy}")
+        st.warning(f"Total expenses (${total_expenses:,.2f}) exceed total income (${total_income:,.2f}).")
+        st.warning(f"Discrepancy: ${discrepancy:,.2f}")
     else:
-        print(f"Total Income: ${total_income}")
-        print(f"Total Expenses: ${total_expenses}")
+        st.success(f"Total Income: ${total_income:,.2f}")
+        st.success(f"Total Expenses: ${total_expenses:,.2f}")
 
     # Define nodes: incomes, budget, and expenses
     income_labels = list(income_sources.keys())
@@ -42,9 +42,9 @@ def create_budget_sankey(
     budget_label = "Budget"
 
     # Append amounts to labels
-    income_labels_with_amount = [f"{label}\n${amount:,.0f}" for label, amount in income_sources.items()]
-    budget_label_with_amount = f"{budget_label}\n${total_income:,.0f}"  # Assuming Budget receives all income
-    expense_labels_with_amount = [f"{label}\n${amount:,.0f}" for label, amount in expenses.items()]
+    income_labels_with_amount = [f"{label}\n${amount:,.2f}" for label, amount in income_sources.items()]
+    budget_label_with_amount = f"{budget_label}\n${total_income:,.2f}"  # Assuming Budget receives all income
+    expense_labels_with_amount = [f"{label}\n${amount:,.2f}" for label, amount in expenses.items()]
 
     all_labels = income_labels_with_amount + [budget_label_with_amount] + expense_labels_with_amount
 
@@ -74,7 +74,7 @@ def create_budget_sankey(
 
     # Flows from Income Sources to Budget
     for income, amount in income_sources.items():
-        sources.append(label_indices[f"{income}\n${amount:,.0f}"])
+        sources.append(label_indices[f"{income}\n${amount:,.2f}"])
         targets.append(label_indices[budget_label_with_amount])
         values.append(amount)
         colors.append(income_color_map[income])
@@ -82,7 +82,7 @@ def create_budget_sankey(
     # Flows from Budget to Expenses
     for expense, amount in expenses.items():
         sources.append(label_indices[budget_label_with_amount])
-        targets.append(label_indices[f"{expense}\n${amount:,.0f}"])
+        targets.append(label_indices[f"{expense}\n${amount:,.2f}"])
         values.append(amount)
         colors.append(expense_color_map[expense])
 
@@ -148,44 +148,73 @@ def create_budget_sankey(
     # Update layout
     fig.update_layout(layout_update)
 
-    fig.show()
     return fig
 
-if __name__ == "__main__":
-    # === 1. Define Income Sources ===
-    income_sources = {
-        "Job Salary": 165000,
-        "Miranda": 7200.00,
-        "Chase Cash Back": 600.00,
-        "VMFXX Dividend": 1800.00
-    }
+def main():
+    st.set_page_config(page_title="Budget Sankey Diagram", layout="wide")
+    st.title("📊 Budget Sankey Diagram")
 
-    # === 2. Define Expense Categories ===
-    expenses  = {
-        "Rent": 27120.00,
-        "Groceries": 7200.00,
-        "Utilities": 4800.00,
-        "Transportation": 1620.00,
-        "Subscriptions": 393.60,
-        "Entertainment": 204.00,
-        "Renters Insurance": 136.92
-    }
+    st.sidebar.header("Input Parameters")
+
+    # === 1. Input Income Sources ===
+    st.sidebar.subheader("Income Sources")
+    income_sources = {}
+    num_incomes = st.sidebar.number_input("Number of Income Sources", min_value=1, max_value=20, value=2, step=1)
+    for i in range(int(num_incomes)):
+        col1, col2 = st.sidebar.columns(2)
+        with col1:
+            income_name = st.text_input(f"Income {i+1} Name", key=f"income_name_{i}")
+        with col2:
+            income_amount = st.number_input(f"Amount for {income_name}", min_value=0.0, value=1000.0, step=100.0, key=f"income_amount_{i}")
+        if income_name:
+            income_sources[income_name] = income_amount
+
+    st.sidebar.markdown("---")
+
+    # === 2. Input Expense Categories ===
+    st.sidebar.subheader("Expense Categories")
+    expenses = {}
+    num_expenses = st.sidebar.number_input("Number of Expense Categories", min_value=1, max_value=20, value=3, step=1)
+    for i in range(int(num_expenses)):
+        col1, col2 = st.sidebar.columns(2)
+        with col1:
+            expense_name = st.text_input(f"Expense {i+1} Name", key=f"expense_name_{i}")
+        with col2:
+            expense_amount = st.number_input(f"Amount for {expense_name}", min_value=0.0, value=500.0, step=50.0, key=f"expense_amount_{i}")
+        if expense_name:
+            expenses[expense_name] = expense_amount
+
+    st.sidebar.markdown("---")
 
     # === 3. Customize Diagram Appearance ===
-    title = "Annual Budget Overview"
-    title_color = "black"  # Color of the title text
+    st.sidebar.subheader("Diagram Appearance")
+    title = st.sidebar.text_input("Title of the Diagram", "Annual Budget Overview")
+    title_color = st.sidebar.color_picker("Title Color", "#000000")
 
     # === 4. (Optional) Customize Layout ===
+    st.sidebar.subheader("Layout Customization")
+    paper_bgcolor = st.sidebar.color_picker("Paper Background Color", "#FFFFFF")
+    plot_bgcolor = st.sidebar.color_picker("Plot Background Color", "#FFFFFF")
     custom_layout = {
-        'paper_bgcolor': "white",
-        'plot_bgcolor': "white"
+        'paper_bgcolor': paper_bgcolor,
+        'plot_bgcolor': plot_bgcolor
     }
 
     # === 5. Create and Display the Sankey Diagram ===
-    create_budget_sankey(
-        income_sources=income_sources,
-        expenses=expenses,
-        title=title,
-        title_color=title_color,
-        layout=custom_layout
-    )
+    if st.sidebar.button("Generate Sankey Diagram"):
+        if not income_sources:
+            st.error("Please enter at least one income source.")
+        elif not expenses:
+            st.error("Please enter at least one expense category.")
+        else:
+            fig = create_budget_sankey(
+                income_sources=income_sources,
+                expenses=expenses,
+                title=title,
+                title_color=title_color,
+                layout=custom_layout
+            )
+            st.plotly_chart(fig, use_container_width=True)
+
+if __name__ == "__main__":
+    main()
